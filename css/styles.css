@@ -1,0 +1,6 @@
+#gameWorld{
+    /*cursor:        none;*/
+    border:         10px solid darkgray;
+    background:     rgb(20, 5, 40);
+    vertical-align: bottom;
+}
