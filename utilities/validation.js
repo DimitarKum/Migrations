@@ -7,6 +7,8 @@ Migrations.validateParams = function(compositeParameter, ...propertyNames){
     propertyNames.forEach(function(propertyName){
         if(compositeParameter[propertyName] == null){
             console.dir(compositeParameter);
+            console.log(compositeParameter);
+            console.log(propertyName);
             throw new Error("Parameter " + compositeParameter + " is missing the following property [" + propertyName + "].");
         }
     });

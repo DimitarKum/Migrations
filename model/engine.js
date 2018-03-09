@@ -12,6 +12,7 @@ Migrations.Engine = function(params){
     this.windowWidth = params.windowWidth;
     this.windowHeight = params.windowHeight;
     this.planets = []
+    this.entities = [];
 };
 
 Migrations.Engine.prototype.addPlanet = function(params){
@@ -19,6 +20,14 @@ Migrations.Engine.prototype.addPlanet = function(params){
     this.planets.push(params.planet);
 };
 
+Migrations.Engine.prototype.addEntity = function(params){
+    Migrations.validateParams(params, "entity");
+    this.entities.push(params.entity);
+};
+Migrations.Engine.prototype.removeEntity = function(params){
+    Migrations.validateParams(params, "entity");
+    this.entities.remove(params.entity);
+};
 Migrations.Engine.prototype.start = function(){
     const that = this;
     function step(timestamp){
@@ -27,12 +36,19 @@ Migrations.Engine.prototype.start = function(){
         
         that.context.clearRect(0, 0, that.windowWidth, that.windowHeight);
 
+        that.entities.forEach(function(entity){
+            entity.update(drawUpdateParam);
+        })
         that.planets.forEach(function(planet){
             planet.update(drawUpdateParam);
         });
+
         that.planets.forEach(function(planet){
             planet.draw(drawUpdateParam);
         });
+        that.entities.forEach(function(entity){
+            entity.draw(drawUpdateParam);
+        })
 
         window.requestAnimationFrame(function(timestamp){
             step(timestamp);

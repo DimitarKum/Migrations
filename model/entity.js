@@ -30,6 +30,8 @@ Migrations.Entity = function(params){
 
     this.energy = params.startingEnergy;
 
+
+    this.dieCounter = 0;
     this.lastTimestamp = 0;
     this.timeSinceLastFrame = 0;
     this.updateInterval = 250;
@@ -46,6 +48,13 @@ Migrations.Entity = function(params){
             this.shouldUpdate = false;
             this.die();
             return;
+        }
+        if(this.state === Migrations.EntityStates.InSpace){
+            if(Migrations.distance({entity1: this, entity2: this.planetMigratingTo}) < 5){
+
+                Migrations.GlobalEngine.removeEntity({entity: this});
+                this.planetMigratingTo.addEntity({entity: this});
+            }
         }
         // console.log("YEP");
         this.shouldUpdate = false;
@@ -77,176 +86,41 @@ Migrations.Entity = function(params){
         this.spot = params.currentSpot;
         this.rightSpot = params.rightSpot;
     };
-};
-
-Migrations.Herbivore = function(params){
-    Migrations.Entity.call(this, {
-        x: 80,
-        y: 60,
-        width: 12,
-        height: 8,
-        type: Migrations.EntityTypes.Herbivore,
-        startingEnergy: 200
-    });
-};
-Migrations.Herbivore.prototype.update = function(params){
-    // Migrations.validateParams(params, "timestamp", "context");
-    this.prepareUpdate(params);
-    if(!this.shouldUpdate){
-        return;
+    this.migrate = function(params){
+        Migrations.validateParams(params, "planet");
+        const planet = params.planet;
+        this.state = Migrations.EntityStates.InSpace;
+        // this.remove();
+        this.planet.removeEntity({entity: this});
+        this.spot.removeEntity();
+        Migrations.GlobalEngine.addEntity({entity: this});
+        this.planetMigratingTo = planet;
     }
 
-    switch(this.state){
-        case Migrations.EntityStates.OnPlanet:
-            this.energy -= 4.25;
-            if(this.energy < 0){
-                this.die();
-            }
-            if(!this.leftSpot.isEmpty() && this.leftSpot.getEntity().type === Migrations.EntityTypes.Plant && this.leftSpot.getEntity().state !== Migrations.EntityStates.Reproducing){
-                this.consume({plant: this.leftSpot.getEntity()});
-                return;
-            }
-            if(!this.rightSpot.isEmpty() && this.rightSpot.getEntity().type === Migrations.EntityTypes.Plant && this.rightSpot.getEntity().state !== Migrations.EntityStates.Reproducing){
-                this.consume({plant: this.rightSpot.getEntity()});
-                return;
-            }
-            const emptySpots = this.planet.getEmptySpots();
-            const spotsWithFood = [];
-            emptySpots.forEach(function(emptySpot){
-                if(
-                    // (Math.pow(this.spot - emptySpot.x, 2) + Math.pow(this.spot - emptySpot.y)) < 50 &&
-                    ((!emptySpot.leftSpot.isEmpty() &&
-                    emptySpot.leftSpot.getEntity().type === Migrations.EntityTypes.Plant &&
-                    emptySpot.leftSpot.getEntity().state !== Migrations.EntityStates.Reproducing) ||
-                    (!emptySpot.rightSpot.isEmpty() &&
-                    emptySpot.rightSpot.getEntity().type === Migrations.EntityTypes.Plant &&
-                    emptySpot.rightSpot.getEntity().state !== Migrations.EntityStates.Reproducing))
-                    ){
-
-                    spotsWithFood.push(emptySpot);
-                }
-            });
-            if(spotsWithFood.length > 0 ){
-                const chosenSpot = spotsWithFood[Math.floor(Math.random() * spotsWithFood.length)];
-                if(chosenSpot.isEmpty()){
-                    this.spot.removeEntity();
-                    chosenSpot.addEntity({entity: this});
-                }
-            }
-            break;
-        case Migrations.EntityStates.InSpace:
-            break;
-        case Migrations.EntityStates.Dying:
-            break;
-        case Migrations.EntityStates.Reproducing:
-            // this.energy -= 50;
-            if(this.reproductionCounter <= 0){
-                const clonedHerbivore = new Migrations.Herbivore();
-                clonedHerbivore.energy = 50;
-                this.planet.addEntity({entity: clonedPlant});
-                this.state = Migrations.EntityStates.OnPlanet;
-                return;
-            }
-            --this.reproductionCounter;
-            break;
-        case Migrations.EntityStates.Consuming:
-            if(this.prey.state === Migrations.EntityStates.OnPlanet){
-                this.prey.energy -= 9;
-                this.energy += 1.75;
-            }else{
-                this.state = Migrations.EntityStates.OnPlanet;
-            }
-            break;
-        default:
-            this.state = Migrations.EntityStates.InSpace;
-            break;
-    }
 };
-Migrations.Herbivore.prototype.draw = function(params){
-    // Migrations.validateParams(params, "timestamp", "context");
-    const ctx = params.context;
-    const startX = Math.floor(this.x + this.width / 2), startY = this.y;
 
-    ctx.font = "12px Arial";
-    ctx.fillStyle = "rgb("+255+","+255+","+255+")";    
-    ctx.fillText(Math.floor(this.energy), this.x - 15, this.y + 15);
 
-    let r, g, b, ratio, complement, fertileR, fertileG, fertileB, barrenR, barrenG, barrenB;
-    switch(this.state){
-        case Migrations.EntityStates.OnPlanet:
-            ctx.save();
-            ctx.beginPath();
-            ctx.fillStyle = "#A010C0";
-            ratio = Math.max(0, Math.min(this.energy / 500.0, 1.0));
-            complement = 1.0 - ratio;
-            fertileR = 185, fertileG = 15, fertileB = 210;
-            barrenR = 115, barrenG = 145, barrenB = 5;
-            r = Math.floor(fertileR * ratio + barrenR * complement),
-                g = Math.floor(fertileG * ratio + barrenG * complement),
-                b = Math.floor(fertileB * ratio + barrenB * complement);
-            ctx.fillStyle = "rgb("+r+","+g+","+b+")";
-            ctx.lineWidth = 3;
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(this.x, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.lineTo(this.x + this.width, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-            break;
-        case Migrations.EntityStates.InSpace:
-            break;
-        case Migrations.EntityStates.Dying:
-            ctx.save();
-            ctx.beginPath();
-            r = 120, g = 20, b = 35;    
-            ctx.fillStyle = "rgb("+r+","+g+","+b+")"
-            ctx.lineWidth = 3;
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(this.x, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.lineTo(this.x + this.width, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-            break;
-        case Migrations.EntityStates.Reproducing:
-            break;
-        case Migrations.EntityStates.Consuming:
-            ctx.save();
-            ctx.beginPath();
-            ratio = Math.max(0, Math.min(this.energy / 500.0, 1.0));
-            complement = 1.0 - ratio;
-            fertileR = 185, fertileG = 15, fertileB = 210;
-            barrenR = 115, barrenG = 145, barrenB = 5;
-            r = Math.floor(fertileR * ratio + barrenR * complement),
-                g = Math.floor(fertileG * ratio + barrenG * complement),
-                b = Math.floor(fertileB * ratio + barrenB * complement);
-            ctx.fillStyle = "rgb("+r+","+g+","+b+")";
-            ctx.lineWidth = 3;
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(this.x, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.lineTo(this.x + this.width, this.y + Math.floor(Math.sqrt(2 / 3) * this.width));
-            ctx.closePath();
-            ctx.fill();
 
-            ctx.beginPath();
-            ctx.strokeStyle = "#C03030";
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(this.prey.x, this.prey.y);
-            ctx.closePath();
-            ctx.stroke();
+Migrations.distance = function(params){
+    // Migrations.validateParams(params, "entity1", "entity2");
+    return Math.sqrt((params.entity1.x - params.entity2.x) * (params.entity1.x - params.entity2.x) + 
+        (params.entity1.y - params.entity2.y) * (params.entity1.y - params.entity2.y));
 
-            ctx.restore();
-            break;
-        default:
-            this.state = Migrations.EntityStates.InSpace;
-            break;
+};
+
+Migrations.centerOf = function(entity){
+    return {
+        x: entity.x + Math.floor(entity.width / 2.0),
+        y: entity.y + Math.floor(entity.height / 2.0),
     }
 };
 
-
-Migrations.Herbivore.prototype.consume = function(params){
-    Migrations.validateParams(params, "plant");
-    const plant = params.plant;
-    this.prey = plant;
-    this.state = Migrations.EntityStates.Consuming;
+Migrations.moveTo = function(params){
+    // Migrations.validateParams(params, "mover", "target", "speed");
+    const target = params.target, mover = params.mover, speed = params.speed;
+    const dx = (target.x - mover.x), dy = (target.y - mover.y);
+    const s = speed / Math.sqrt(dx * dx + dy * dy);
+    const resultingDx = s * dx, resultingDy = s * dy;
+    mover.x += resultingDx;
+    mover.y += resultingDy;
 };

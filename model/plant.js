@@ -2,7 +2,7 @@
 // Global namespace Migrations
 var Migrations = Migrations || {};
 
-Migrations.Plant = function(params){
+Migrations.Plant = function(params, flag){
     Migrations.Entity.call(this, {
         x: 50,
         y: 50,
@@ -14,6 +14,7 @@ Migrations.Plant = function(params){
 };
 
 Migrations.Plant.prototype.update = function(params){
+    const that = this;
     this.prepareUpdate(params);
     if(!this.shouldUpdate){
         return;
@@ -22,13 +23,33 @@ Migrations.Plant.prototype.update = function(params){
     // console.log(params.timestamp);
     switch(this.state){
         case Migrations.EntityStates.OnPlanet:
-            this.energy -= 12;
+            this.energy -= 22;
             this.energy += this.planet.getSunEnergy();
+            if(this.energy > 50){
+                const candidatePlanets = [];
+                Migrations.Planets.forEach(function(planet){
+                    if(planet !== that.planet && planet.getSunEnergy() > that.planet.getSunEnergy() && 0.002 > Math.random()){
+                    // if(planet !== that.planet){
+                        candidatePlanets.push(planet);
+                    }
+                });
+                if(candidatePlanets.length > 0){
+                    that.migrate({planet: candidatePlanets[Math.floor(Math.random() * candidatePlanets.length)]});
+                    this.energy -= 40;
+                    return;
+                }
+            }
             if(this.energy > 185){
                 this.reproduce();
             }
             break;
         case Migrations.EntityStates.InSpace:
+            // this.energy -= 2;
+            Migrations.moveTo({
+                mover: this,
+                target: this.planetMigratingTo,
+                speed: 10
+            });
             break;
         case Migrations.EntityStates.Dying:
             break;
@@ -83,6 +104,25 @@ Migrations.Plant.prototype.draw = function(params){
             ctx.fill();
             break;
         case Migrations.EntityStates.InSpace:
+            // console.log("x = " + this.x + ", y = "+ this.y);
+            ctx.beginPath();
+            ratio = Math.max(0, Math.min(this.energy / 500.0, 1.0));
+            complement = 1.0 - ratio;
+            fertileR = 32, fertileG = 255, fertileB = 80;
+            barrenR = 110, barrenG = 95, barrenB = 75;
+            r = Math.floor(fertileR * ratio + barrenR * complement),
+                g = Math.floor(fertileG * ratio + barrenG * complement),
+                b = Math.floor(fertileB * ratio + barrenB * complement);
+            ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+            ctx.lineWidth = 3;
+            ctx.rect(
+                this.x,
+                this.y,
+                this.width,
+                this.height
+            );
+            ctx.closePath();
+            ctx.fill();
             break;
         case Migrations.EntityStates.Dying:
             ctx.beginPath();

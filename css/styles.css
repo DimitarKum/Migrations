@@ -1,6 +1,29 @@
 #gameWorld{
     /*cursor:        none;*/
-    border:         10px solid darkgray;
+    border-top:         10px solid darkgray;
+    border-left:         10px solid darkgray;
+    border-bottom:         10px solid darkgray;
     background:     rgb(20, 5, 40);
     vertical-align: bottom;
+    float:left;
+}
+
+#description{
+    margin-left:auto;
+    border-top:         10px solid darkgray;
+    border-bottom:         10px solid darkgray;
+    border-right:         10px solid darkgray;
+    background:     rgb(20, 5, 40);
+    color: #FB0;
+    vertical-align: bottom;
+    display:inline-block;
+    height: 700px;
+    width: 320px;
+}
+
+#btnSave, #btnLoad{
+    background: #FB0;
+    color: rgb(20, 5, 40);
+    font-weight: bold;
+    font-size: 20px;
 }

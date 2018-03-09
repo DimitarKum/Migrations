@@ -3,11 +3,12 @@
 var Migrations = Migrations || {};
 
 Migrations.Planet = function(params){
-    Migrations.validateParams(params, "x", "y", "size");
+    Migrations.validateParams(params, "x", "y", "size", "id");
     if(params.size > 25){
         throw new Error("Maximum planet size exceeded.([" + params.size + "] was passed, 25 is maximum.");
     }
 
+    this.id = params.id;
     this.x = params.x;
     this.y = params.y;
 
@@ -31,7 +32,7 @@ Migrations.Planet = function(params){
 };
 
 Migrations.Planet.prototype.getSunEnergy = function(){
-    return 4 + this.energy / (2 + 25 * this.plants);
+    return 10 + this.energy / (20 + 10 * this.plants);
 };
 
 
@@ -95,6 +96,28 @@ Migrations.Planet.prototype.removeEntity = function(params){
         default:
             break;
     }
+};
+
+Migrations.Planet.prototype.removeAllEntities = function(){
+    this.rings.forEach(function(ring){
+        ring.spots.forEach(function(spot){
+            if(spot.hasEntity){
+                spot.entity.remove();
+            }
+        });
+    });
+};
+
+Migrations.Planet.prototype.getEntities = function(){
+    const entities = [];
+    this.rings.forEach(function(ring){
+        ring.spots.forEach(function(spot){
+            if(spot.hasEntity){
+                entities.push(spot.entity);
+            }
+        });
+    });
+    return entities;
 };
 
 Migrations.Planet.prototype.update = function(params){
